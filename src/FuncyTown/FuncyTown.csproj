@@ -8,6 +8,11 @@
     <Description>Strongly-typed Result&lt;T, TError&gt; for C# 14 / .NET 10 — meta-package bundling Abstractions and Generators.</Description>
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- The meta package is pure-metadata + analyzer assets; there is no lib/ output to
+         symbolicate, so an .snupkg would be empty and nuget.org rejects empty symbol
+         packages with HTTP 400 "The package does not contain any symbol (.pdb) files."
+         Override the repo-wide IncludeSymbols=true default for this project. -->
+    <IncludeSymbols>false</IncludeSymbols>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
