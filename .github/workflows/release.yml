@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+# Don't race two release runs against each other (e.g. a maintainer pushes v0.6.0
+# and v0.6.1 in quick succession). Don't cancel the in-flight one — let it finish
+# the publish, then queue the next.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# id-token: write is required for NuGet trusted publishing (OIDC).
+# contents: write is required to create the GitHub release.
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Wrap the publish step in a protected GitHub Environment so a maintainer must
+    # approve the release before it goes to nuget.org. Configure the environment
+    # at https://github.com/mhagrelius/FuncyTown/settings/environments — see
+    # docs/release.md for setup instructions.
+    environment: nuget-publish
+    steps:
+      # SHA-pinned actions for supply-chain safety. Dependabot bumps the pins.
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@3951f0dfe7a07e2313ec93c75700083e2005cbab # v4.3.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore FuncyTown.sln
+
+      - name: Build
+        run: dotnet build FuncyTown.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test FuncyTown.sln --configuration Release --no-build
+
+      - name: Pack
+        run: dotnet pack FuncyTown.sln --configuration Release --no-build --output artifacts
+
+      - name: Verify symbol packages
+        run: |
+          set -euo pipefail
+          # Only runtime + meta packages ship a sibling .snupkg. The analyzer-asset
+          # projects (FuncyTown.Generators / FuncyTown.Analyzers) set IncludeSymbols=false
+          # because they have no lib/ output to symbolicate.
+          for pkg in artifacts/FuncyTown.Abstractions.*.nupkg artifacts/FuncyTown.[0-9]*.nupkg; do
+            snupkg="${pkg%.nupkg}.snupkg"
+            if [ ! -s "$snupkg" ]; then
+              echo "Missing or empty symbol package: $snupkg" >&2
+              exit 1
+            fi
+          done
+          for pkg in artifacts/FuncyTown.Generators.*.nupkg artifacts/FuncyTown.Analyzers.*.nupkg; do
+            snupkg="${pkg%.nupkg}.snupkg"
+            if [ -e "$snupkg" ]; then
+              echo "Unexpected symbol package for analyzer-asset project: $snupkg" >&2
+              exit 1
+            fi
+          done
+
+      - name: Smoke-test packed packages
+        run: bash scripts/pack-and-test.sh
+
+      - name: Login to NuGet (OIDC trusted publishing)
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        id: nuget-login
+        with:
+          user: hagrelius
+
+      - name: Push packages to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          # Push every nupkg; `dotnet nuget push` automatically picks up the sibling
+          # snupkg when both sit in the same directory, but we also explicitly push
+          # any orphaned snupkg as belt-and-braces.
+          for pkg in artifacts/*.nupkg; do
+            dotnet nuget push "$pkg" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --skip-duplicate
+          done
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v2.6.1
+        with:
+          files: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          generate_release_notes: true

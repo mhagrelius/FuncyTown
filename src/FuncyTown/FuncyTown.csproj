@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FuncyTown</RootNamespace>
+    <AssemblyName>FuncyTown</AssemblyName>
+    <PackageId>FuncyTown</PackageId>
+    <Description>Strongly-typed Result&lt;T, TError&gt; for C# 14 / .NET 10 — meta-package bundling Abstractions and Generators.</Description>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FuncyTown.Abstractions\FuncyTown.Abstractions.csproj"
+                      ReferenceOutputAssembly="true"
+                      PrivateAssets="none" />
+    <ProjectReference Include="..\FuncyTown.Generators\FuncyTown.Generators.csproj"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="Analyzer"
+                      PrivateAssets="all" />
+    <ProjectReference Include="..\FuncyTown.Analyzers\FuncyTown.Analyzers.csproj"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="Analyzer"
+                      PrivateAssets="all" />
+    <!-- Explicit ProjectReference to CodeFixes so the meta-package's build graph forces
+         CodeFixes to build before pack reaches the <None Include="..bin..\CodeFixes.dll">
+         items below. The Analyzers project also references CodeFixes, but pinning the edge
+         here makes a clean `dotnet pack src/FuncyTown` from a fresh checkout safe. -->
+    <ProjectReference Include="..\FuncyTown.Analyzers.CodeFixes\FuncyTown.Analyzers.CodeFixes.csproj"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\FuncyTown.Generators\bin\$(Configuration)\netstandard2.0\FuncyTown.Generators.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/roslyn5.3/cs/"
+          Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\FuncyTown.Analyzers\bin\$(Configuration)\netstandard2.0\FuncyTown.Analyzers.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/roslyn5.3/cs/"
+          Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\FuncyTown.Analyzers.CodeFixes\bin\$(Configuration)\netstandard2.0\FuncyTown.Analyzers.CodeFixes.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/roslyn5.3/cs/"
+          Visible="false" />
+  </ItemGroup>
+
+</Project>

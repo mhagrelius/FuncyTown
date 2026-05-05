@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>FuncyTown.Analyzers</RootNamespace>
+    <AssemblyName>FuncyTown.Analyzers</AssemblyName>
+    <PackageId>FuncyTown.Analyzers</PackageId>
+    <Description>Roslyn analyzers for FuncyTown.</Description>
+
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeSymbols>false</IncludeSymbols>
+
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FuncyTown.Analyzers.CodeFixes\FuncyTown.Analyzers.CodeFixes.csproj"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(OutputPath)\$(AssemblyName).dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/roslyn5.3/cs/"
+          Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\FuncyTown.Analyzers.CodeFixes\bin\$(Configuration)\netstandard2.0\FuncyTown.Analyzers.CodeFixes.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/roslyn5.3/cs/"
+          Visible="false" />
+  </ItemGroup>
+
+</Project>
