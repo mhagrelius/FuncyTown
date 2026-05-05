@@ -1,0 +1,25 @@
+name: dependency-review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      # SHA-pinned actions for supply-chain safety, matching release.yml's posture.
+      # Dependabot bumps the pins.
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          # Block PRs that introduce dependencies with known high-severity vulnerabilities.
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
