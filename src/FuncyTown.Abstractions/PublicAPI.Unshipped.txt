@@ -1,0 +1,2 @@
+#nullable enable
+FuncyTown.Result<T, TError>.IsUninitialized.get -> bool

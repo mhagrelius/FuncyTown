@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore FuncyTown.sln
+
+      - name: Build
+        run: dotnet build FuncyTown.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test FuncyTown.sln --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Pack
+        run: dotnet pack FuncyTown.sln --configuration Release --no-build --output artifacts
+
+      - name: Verify symbol packages and embedded SourceLink
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -euo pipefail
+          # Symbol-package contract: only projects that emit lib/ output produce a sibling
+          # .snupkg. FuncyTown.Generators and FuncyTown.Analyzers set IncludeSymbols=false
+          # (they ship under analyzers/dotnet/roslyn5.3/cs/, not lib/) so they intentionally
+          # have no symbol package. Verify only the runtime + meta packages here.
+          for pkg in artifacts/FuncyTown.Abstractions.*.nupkg artifacts/FuncyTown.[0-9]*.nupkg; do
+            snupkg="${pkg%.nupkg}.snupkg"
+            if [ ! -s "$snupkg" ]; then
+              echo "Missing or empty symbol package: $snupkg" >&2
+              exit 1
+            fi
+          done
+          # Conversely, the analyzer/generator packages must NOT carry a stray .snupkg —
+          # if one appears it usually means IncludeSymbols slipped back on by accident.
+          for pkg in artifacts/FuncyTown.Generators.*.nupkg artifacts/FuncyTown.Analyzers.*.nupkg; do
+            snupkg="${pkg%.nupkg}.snupkg"
+            if [ -e "$snupkg" ]; then
+              echo "Unexpected symbol package for analyzer-asset project: $snupkg" >&2
+              exit 1
+            fi
+          done
+          # Try the dotnet/sourcelink validator on the symbol package. PDBs live in
+          # the .snupkg (SymbolPackageFormat=snupkg). The snupkg-presence checks above
+          # are the load-bearing gate; the validator is gravy — emit a CI warning if
+          # it can't run or reports issues, but don't fail the build.
+          dotnet tool install --global sourcelink || true
+          if command -v sourcelink >/dev/null 2>&1; then
+            if sourcelink test artifacts/FuncyTown.Abstractions.*.snupkg; then
+              echo "sourcelink validation OK"
+            else
+              echo "::warning::sourcelink test reported issues (exit $?); see step log."
+            fi
+          else
+            echo "::warning::sourcelink tool not available; relying on snupkg presence + Microsoft.SourceLink.GitHub embedding."
+          fi
+
+      - name: Smoke-test packed packages (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: bash scripts/pack-and-test.sh
+
+      - name: Smoke-test packed packages (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: ./scripts/pack-and-test.ps1
+
+      - name: Upload artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/**/*.trx

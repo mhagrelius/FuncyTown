@@ -1,0 +1,15 @@
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+.claude/settings.local.json
+TestResults/
+*.received.cs
+*.received.txt
+node_modules/
+.nuget/
