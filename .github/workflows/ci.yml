@@ -46,23 +46,28 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
-          # Symbol-package contract: only projects that emit lib/ output produce a sibling
-          # .snupkg. FuncyTown.Generators and FuncyTown.Analyzers set IncludeSymbols=false
-          # (they ship under analyzers/dotnet/roslyn5.3/cs/, not lib/) so they intentionally
-          # have no symbol package. Verify only the runtime + meta packages here.
-          for pkg in artifacts/FuncyTown.Abstractions.*.nupkg artifacts/FuncyTown.[0-9]*.nupkg; do
+          # Symbol-package contract: only the runtime (FuncyTown.Abstractions) emits
+          # lib/ output, so it's the only project that produces a sibling .snupkg.
+          # FuncyTown.Generators / FuncyTown.Analyzers ship as analyzer assets under
+          # analyzers/dotnet/roslyn5.3/cs/ with IncludeSymbols=false. The meta
+          # FuncyTown package has IncludeBuildOutput=false + IncludeSymbols=false —
+          # nuget.org rejects empty symbol packages, so we must not produce one.
+          for pkg in artifacts/FuncyTown.Abstractions.*.nupkg; do
             snupkg="${pkg%.nupkg}.snupkg"
             if [ ! -s "$snupkg" ]; then
               echo "Missing or empty symbol package: $snupkg" >&2
               exit 1
             fi
           done
-          # Conversely, the analyzer/generator packages must NOT carry a stray .snupkg —
-          # if one appears it usually means IncludeSymbols slipped back on by accident.
-          for pkg in artifacts/FuncyTown.Generators.*.nupkg artifacts/FuncyTown.Analyzers.*.nupkg; do
+          # Conversely, the meta + analyzer-asset packages must NOT carry a stray
+          # .snupkg — if one appears it usually means IncludeSymbols slipped back
+          # on by accident, which would fail nuget.org's empty-symbol-package check.
+          for pkg in artifacts/FuncyTown.Generators.*.nupkg \
+                     artifacts/FuncyTown.Analyzers.*.nupkg \
+                     artifacts/FuncyTown.[0-9]*.nupkg; do
             snupkg="${pkg%.nupkg}.snupkg"
             if [ -e "$snupkg" ]; then
-              echo "Unexpected symbol package for analyzer-asset project: $snupkg" >&2
+              echo "Unexpected symbol package for non-runtime project: $snupkg" >&2
               exit 1
             fi
           done

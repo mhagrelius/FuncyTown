@@ -58,20 +58,23 @@ jobs:
       - name: Verify symbol packages
         run: |
           set -euo pipefail
-          # Only runtime + meta packages ship a sibling .snupkg. The analyzer-asset
-          # projects (FuncyTown.Generators / FuncyTown.Analyzers) set IncludeSymbols=false
-          # because they have no lib/ output to symbolicate.
-          for pkg in artifacts/FuncyTown.Abstractions.*.nupkg artifacts/FuncyTown.[0-9]*.nupkg; do
+          # Only the runtime project (FuncyTown.Abstractions) ships a sibling .snupkg.
+          # The meta package (FuncyTown) and analyzer-asset packages
+          # (FuncyTown.Generators / FuncyTown.Analyzers) all set IncludeSymbols=false
+          # because they have no lib/ output — nuget.org rejects empty symbol packages.
+          for pkg in artifacts/FuncyTown.Abstractions.*.nupkg; do
             snupkg="${pkg%.nupkg}.snupkg"
             if [ ! -s "$snupkg" ]; then
               echo "Missing or empty symbol package: $snupkg" >&2
               exit 1
             fi
           done
-          for pkg in artifacts/FuncyTown.Generators.*.nupkg artifacts/FuncyTown.Analyzers.*.nupkg; do
+          for pkg in artifacts/FuncyTown.Generators.*.nupkg \
+                     artifacts/FuncyTown.Analyzers.*.nupkg \
+                     artifacts/FuncyTown.[0-9]*.nupkg; do
             snupkg="${pkg%.nupkg}.snupkg"
             if [ -e "$snupkg" ]; then
-              echo "Unexpected symbol package for analyzer-asset project: $snupkg" >&2
+              echo "Unexpected symbol package for non-runtime project: $snupkg" >&2
               exit 1
             fi
           done
@@ -90,14 +93,25 @@ jobs:
           NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
-          # Push every nupkg; `dotnet nuget push` automatically picks up the sibling
-          # snupkg when both sit in the same directory, but we also explicitly push
-          # any orphaned snupkg as belt-and-braces.
-          for pkg in artifacts/*.nupkg; do
+          # FuncyTown.Abstractions is the only project with lib/ output, so its
+          # nupkg has a real sibling .snupkg that nuget.org accepts. `dotnet nuget
+          # push` auto-uploads the sibling.
+          dotnet nuget push artifacts/FuncyTown.Abstractions.*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
+          # The meta package and the analyzer-asset packages have no symbols
+          # to ship (IncludeBuildOutput=false / IncludeSymbols=false). Pass
+          # --no-symbols so the client doesn't try to upload an empty .snupkg
+          # — nuget.org rejects empty symbol packages with HTTP 400.
+          for pkg in artifacts/FuncyTown.Generators.*.nupkg \
+                     artifacts/FuncyTown.Analyzers.*.nupkg \
+                     artifacts/FuncyTown.[0-9]*.nupkg; do
             dotnet nuget push "$pkg" \
               --source https://api.nuget.org/v3/index.json \
               --api-key "$NUGET_API_KEY" \
-              --skip-duplicate
+              --skip-duplicate \
+              --no-symbols
           done
 
       - name: Create GitHub release
