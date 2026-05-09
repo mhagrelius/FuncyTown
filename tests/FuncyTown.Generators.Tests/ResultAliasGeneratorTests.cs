@@ -270,6 +270,48 @@ public class ResultAliasGeneratorTests
     }
 
     [Fact]
+    public void Struct_alias_with_empty_parameter_list_compiles_after_generation()
+    {
+        const string source = """
+            using FuncyTown;
+            namespace MyApp;
+
+            [Result<int, string>]
+            public readonly partial record struct OperationResult();
+
+            internal static class Usage
+            {
+                public static int Run() => OperationResult.Success(42).Value;
+            }
+            """;
+
+        var diagnostics = GeneratorTestHarness.Compile(source);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "FT0009");
+    }
+
+    [Fact]
+    public void Struct_alias_with_primary_constructor_parameters_reports_FT0009()
+    {
+        const string source = """
+            using FuncyTown;
+            namespace MyApp;
+
+            [Result<int, string>]
+            public readonly partial record struct OperationResult(string myVal);
+            """;
+
+        var result = GeneratorTestHarness.Run(source);
+        var diagnostic = Assert.Single(result.Diagnostics, diagnostic => diagnostic.Id == "FT0009");
+        Assert.Equal(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Empty(result.Results.Single().GeneratedSources);
+
+        var diagnostics = GeneratorTestHarness.Compile(source);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "FT0009");
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+    }
+
+    [Fact]
     public void Nested_alias_compiles_after_generation()
     {
         const string source = """
@@ -352,6 +394,85 @@ public class ResultAliasGeneratorTests
             """;
         var diagnostics = GeneratorTestHarness.Compile(source);
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void Value_alias_try_methods_compile_for_exceptional_error()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using FuncyTown;
+            namespace MyApp;
+
+            public sealed record AppError(string Code, string Message, Exception? Exception = null) : IExceptionalError<AppError>
+            {
+                public static AppError FromException(Exception exception, string? code = null, string? message = null) =>
+                    new(code ?? exception.GetType().Name, message ?? exception.Message, exception);
+            }
+
+            [Result<string, AppError>]
+            public readonly partial record struct OperationResult;
+
+            [Result<int, AppError>]
+            public readonly partial record struct ParsedResult;
+
+            internal static class Usage
+            {
+                public static int Run(string path)
+                {
+                    return OperationResult.Success(path)
+                        .MapTry(ReadAllText, code: "ReadFailed")
+                        .ThenTry(ParseDocument, code: "ParseFailed")
+                        .Value;
+                }
+
+                public static async Task<int> RunAsync(string path)
+                {
+                    var result = await OperationResult.Success(path)
+                        .MapTryAsync(ReadAllTextAsync, code: "ReadFailed")
+                        .ThenTryAsync(ParseDocumentAsync, code: "ParseFailed");
+
+                    return result.Value;
+                }
+
+                private static string ReadAllText(string path) => path;
+
+                private static Task<string> ReadAllTextAsync(string path) => Task.FromResult(path);
+
+                private static ParsedResult ParseDocument(string text) => text.Length;
+
+                private static Task<ParsedResult> ParseDocumentAsync(string text) => Task.FromResult(ParsedResult.Success(text.Length));
+            }
+            """;
+
+        var diagnostics = GeneratorTestHarness.Compile(source);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void Value_alias_try_methods_are_not_emitted_for_non_exceptional_error()
+    {
+        const string source = """
+            using FuncyTown;
+            namespace MyApp;
+
+            public sealed record FakeError(string Code, string Message) : IError;
+
+            [Result<string, FakeError>]
+            public readonly partial record struct OperationResult;
+            """;
+
+        var result = GeneratorTestHarness.Run(source);
+        var generated = result.Results
+            .Single()
+            .GeneratedSources
+            .Single(source => source.HintName == "MyApp_OperationResult.g.cs")
+            .SourceText
+            .ToString();
+
+        Assert.DoesNotContain("MapTry", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("ThenTry", generated, StringComparison.Ordinal);
     }
 
     [Fact]

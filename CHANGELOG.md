@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `Error`, a basic `IError` implementation with `Code`, `Message`, optional
+  non-serialized `Exception`, and `Error.FromException(...)` for simple failures,
+  prototypes, and adapter boundaries.
+- `IExceptionalError<TSelf>` plus `MapTry`/`ThenTry` and async variants for
+  raw Results and generated aliases, for catching exceptions at adapter boundaries
+  and converting them to Result failures.
+
 ## [0.1.0]
 
 Initial public pre-release on nuget.org.

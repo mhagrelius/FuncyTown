@@ -21,19 +21,20 @@ internal static class CrossAliasOverloadEmitter
     {
         if (currentAlias.IsVoidSuccess)
         {
-            EmitVoidSuccessOverloads(sb, siblingAlias);
+            EmitVoidSuccessOverloads(sb, currentAlias, siblingAlias);
         }
         else
         {
-            EmitValueSuccessOverloads(sb, currentAlias.ValueTypeFullyQualifiedName, siblingAlias);
+            EmitValueSuccessOverloads(sb, currentAlias, siblingAlias);
         }
     }
 
     private static void EmitValueSuccessOverloads(
         IndentedStringBuilder sb,
-        string valueType,
+        ResultAliasModel currentAlias,
         ResultAliasModel siblingAlias)
     {
+        var valueType = currentAlias.ValueTypeFullyQualifiedName;
         var siblingType = siblingAlias.AliasFullyQualifiedName;
 
         EmitValueSyncBind(sb, "Bind", valueType, siblingType);
@@ -44,9 +45,15 @@ internal static class CrossAliasOverloadEmitter
         sb.AppendLine($"public global::System.Threading.Tasks.Task<{siblingType}> ThenAsync(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next) => BindAsync(next);");
         sb.AppendLine($"public global::System.Threading.Tasks.Task<{siblingType}> AndThenAsync(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next) => BindAsync(next);");
         sb.AppendLine($"public global::System.Threading.Tasks.Task<{siblingType}> SelectManyAsync(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next) => BindAsync(next);");
+
+        if (currentAlias.ErrorTypeSupportsExceptions)
+        {
+            EmitValueThenTry(sb, valueType, currentAlias.ErrorTypeFullyQualifiedName, siblingType);
+            EmitValueThenTryAsync(sb, valueType, currentAlias.ErrorTypeFullyQualifiedName, siblingType);
+        }
     }
 
-    private static void EmitVoidSuccessOverloads(IndentedStringBuilder sb, ResultAliasModel siblingAlias)
+    private static void EmitVoidSuccessOverloads(IndentedStringBuilder sb, ResultAliasModel currentAlias, ResultAliasModel siblingAlias)
     {
         var siblingType = siblingAlias.AliasFullyQualifiedName;
 
@@ -57,6 +64,12 @@ internal static class CrossAliasOverloadEmitter
         sb.AppendLine($"public global::System.Threading.Tasks.Task<{siblingType}> ThenAsync(global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next) => BindAsync(next);");
         sb.AppendLine($"public global::System.Threading.Tasks.Task<{siblingType}> AndThenAsync(global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next) => BindAsync(next);");
         sb.AppendLine($"public global::System.Threading.Tasks.Task<{siblingType}> SelectManyAsync(global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next) => BindAsync(next);");
+
+        if (currentAlias.ErrorTypeSupportsExceptions)
+        {
+            EmitVoidThenTry(sb, currentAlias.ErrorTypeFullyQualifiedName, siblingType);
+            EmitVoidThenTryAsync(sb, currentAlias.ErrorTypeFullyQualifiedName, siblingType);
+        }
     }
 
     private static void EmitValueSyncBind(
@@ -149,5 +162,123 @@ internal static class CrossAliasOverloadEmitter
         }
 
         sb.AppendLine($"throw new global::FuncyTown.ResultException(\"Cannot {methodName} an uninitialized Result.\");");
+    }
+
+    private static void EmitValueThenTry(
+        IndentedStringBuilder sb,
+        string valueType,
+        string errorType,
+        string siblingType)
+    {
+        sb.AppendLine($"public {siblingType} ThenTry(global::System.Func<{valueType}, {siblingType}> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine("if (_inner.IsSuccess)");
+            using (sb.Block())
+            {
+                sb.AppendLine("try");
+                using (sb.Block())
+                {
+                    sb.AppendLine("return next(_inner.Value);");
+                }
+
+                sb.AppendLine("catch (global::System.Exception exception)");
+                using (sb.Block())
+                {
+                    sb.AppendLine($"return {siblingType}.Failure({errorType}.FromException(exception, code, message));");
+                }
+            }
+
+            EmitSiblingFailureOrUninitialized(sb, siblingType, "ThenTry");
+        }
+    }
+
+    private static void EmitValueThenTryAsync(
+        IndentedStringBuilder sb,
+        string valueType,
+        string errorType,
+        string siblingType)
+    {
+        sb.AppendLine($"public async global::System.Threading.Tasks.Task<{siblingType}> ThenTryAsync(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine("if (_inner.IsSuccess)");
+            using (sb.Block())
+            {
+                sb.AppendLine("try");
+                using (sb.Block())
+                {
+                    sb.AppendLine("return await next(_inner.Value).ConfigureAwait(false);");
+                }
+
+                sb.AppendLine("catch (global::System.Exception exception)");
+                using (sb.Block())
+                {
+                    sb.AppendLine($"return {siblingType}.Failure({errorType}.FromException(exception, code, message));");
+                }
+            }
+
+            EmitSiblingFailureOrUninitialized(sb, siblingType, "ThenTryAsync");
+        }
+    }
+
+    private static void EmitVoidThenTry(
+        IndentedStringBuilder sb,
+        string errorType,
+        string siblingType)
+    {
+        sb.AppendLine($"public {siblingType} ThenTry(global::System.Func<{siblingType}> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine("if (_inner.IsSuccess)");
+            using (sb.Block())
+            {
+                sb.AppendLine("try");
+                using (sb.Block())
+                {
+                    sb.AppendLine("return next();");
+                }
+
+                sb.AppendLine("catch (global::System.Exception exception)");
+                using (sb.Block())
+                {
+                    sb.AppendLine($"return {siblingType}.Failure({errorType}.FromException(exception, code, message));");
+                }
+            }
+
+            EmitSiblingFailureOrUninitialized(sb, siblingType, "ThenTry");
+        }
+    }
+
+    private static void EmitVoidThenTryAsync(
+        IndentedStringBuilder sb,
+        string errorType,
+        string siblingType)
+    {
+        sb.AppendLine($"public async global::System.Threading.Tasks.Task<{siblingType}> ThenTryAsync(global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine("if (_inner.IsSuccess)");
+            using (sb.Block())
+            {
+                sb.AppendLine("try");
+                using (sb.Block())
+                {
+                    sb.AppendLine("return await next().ConfigureAwait(false);");
+                }
+
+                sb.AppendLine("catch (global::System.Exception exception)");
+                using (sb.Block())
+                {
+                    sb.AppendLine($"return {siblingType}.Failure({errorType}.FromException(exception, code, message));");
+                }
+            }
+
+            EmitSiblingFailureOrUninitialized(sb, siblingType, "ThenTryAsync");
+        }
     }
 }

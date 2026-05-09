@@ -77,12 +77,14 @@ internal static class ResultAliasEmitter
         {
             sb.AppendLine($"private readonly {underlying} _inner;");
             sb.AppendLine();
-            sb.AppendLine($"private {alias}({underlying} inner) => _inner = inner;");
+            var constructorInitializer = model.IsClassKind ? string.Empty : " : this()";
+            sb.AppendLine($"private {alias}({underlying} inner){constructorInitializer} => _inner = inner;");
             sb.AppendLine();
 
             EmitFactoriesAndConversions(sb, model, family, alias, valueType, errorType, underlying);
             EmitAccessors(sb, model, valueType, errorType);
             EmitChainMethods(sb, model, alias, valueType, errorType);
+            EmitTryMethods(sb, model, alias, valueType, errorType);
             EmitCrossAliasOverloads(sb, model, family);
             EmitTapMethods(sb, model, alias, valueType, errorType);
             EmitMatch(sb, model, valueType, errorType);
@@ -332,6 +334,107 @@ internal static class ResultAliasEmitter
         }
 
         sb.AppendLine();
+    }
+
+    private static void EmitTryMethods(
+        IndentedStringBuilder sb,
+        ResultAliasModel model,
+        string alias,
+        string valueType,
+        string errorType)
+    {
+        if (!model.ErrorTypeSupportsExceptions)
+        {
+            return;
+        }
+
+        if (model.IsVoidSuccess)
+        {
+            EmitVoidTryMethods(sb, alias, errorType);
+        }
+        else
+        {
+            EmitValueTryMethods(sb, alias, valueType, errorType);
+        }
+
+        sb.AppendLine();
+    }
+
+    private static void EmitValueTryMethods(IndentedStringBuilder sb, string alias, string valueType, string errorType)
+    {
+        sb.AppendLine($"public {alias} MapTry(global::System.Func<{valueType}, {valueType}> selector, string? code = null, string? message = null) => new(global::FuncyTown.ResultTryExtensions.MapTry(_inner, selector, code, message));");
+        sb.AppendLine($"public global::FuncyTown.Result<TNew, {errorType}> MapTry<TNew>(global::System.Func<{valueType}, TNew> selector, string? code = null, string? message = null) => global::FuncyTown.ResultTryExtensions.MapTry(_inner, selector, code, message);");
+        sb.AppendLine($"public async global::System.Threading.Tasks.Task<{alias}> MapTryAsync(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{valueType}>> selector, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("return new(await global::FuncyTown.ResultTryExtensions.MapTryAsync(_inner, selector, code, message).ConfigureAwait(false));");
+        }
+
+        sb.AppendLine($"public global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>> MapTryAsync<TNew>(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TNew>> selector, string? code = null, string? message = null) => global::FuncyTown.ResultTryExtensions.MapTryAsync(_inner, selector, code, message);");
+        sb.AppendLine();
+
+        sb.AppendLine($"public {alias} ThenTry(global::System.Func<{valueType}, {alias}> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine($"return new(global::FuncyTown.ResultTryExtensions.ThenTry(_inner, value => next(value)._inner, code, message));");
+        }
+
+        sb.AppendLine($"public global::FuncyTown.Result<TNew, {errorType}> ThenTry<TNew>(global::System.Func<{valueType}, global::FuncyTown.Result<TNew, {errorType}>> next, string? code = null, string? message = null) => global::FuncyTown.ResultTryExtensions.ThenTry(_inner, next, code, message);");
+        sb.AppendLine($"public async global::System.Threading.Tasks.Task<{alias}> ThenTryAsync(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{alias}>> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine($"return new(await global::FuncyTown.ResultTryExtensions.ThenTryAsync(_inner, async value => (await next(value).ConfigureAwait(false))._inner, code, message).ConfigureAwait(false));");
+        }
+
+        sb.AppendLine($"public global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>> ThenTryAsync<TNew>(global::System.Func<{valueType}, global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next, string? code = null, string? message = null) => global::FuncyTown.ResultTryExtensions.ThenTryAsync(_inner, next, code, message);");
+    }
+
+    private static void EmitVoidTryMethods(IndentedStringBuilder sb, string alias, string errorType)
+    {
+        sb.AppendLine($"public global::FuncyTown.Result<TNew, {errorType}> MapTry<TNew>(global::System.Func<TNew> selector, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(selector);");
+            sb.AppendLine("return global::FuncyTown.ResultTryExtensions.MapTry(_inner, _ => selector(), code, message);");
+        }
+
+        sb.AppendLine($"public global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>> MapTryAsync<TNew>(global::System.Func<global::System.Threading.Tasks.Task<TNew>> selector, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(selector);");
+            sb.AppendLine("return global::FuncyTown.ResultTryExtensions.MapTryAsync(_inner, _ => selector(), code, message);");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"public {alias} ThenTry(global::System.Func<{alias}> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine($"return new(global::FuncyTown.ResultTryExtensions.ThenTry(_inner, _ => next()._inner, code, message));");
+        }
+
+        sb.AppendLine($"public global::FuncyTown.Result<TNew, {errorType}> ThenTry<TNew>(global::System.Func<global::FuncyTown.Result<TNew, {errorType}>> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine("return global::FuncyTown.ResultTryExtensions.ThenTry(_inner, _ => next(), code, message);");
+        }
+
+        sb.AppendLine($"public async global::System.Threading.Tasks.Task<{alias}> ThenTryAsync(global::System.Func<global::System.Threading.Tasks.Task<{alias}>> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine($"return new(await global::FuncyTown.ResultTryExtensions.ThenTryAsync(_inner, async _ => (await next().ConfigureAwait(false))._inner, code, message).ConfigureAwait(false));");
+        }
+
+        sb.AppendLine($"public global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>> ThenTryAsync<TNew>(global::System.Func<global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next, string? code = null, string? message = null)");
+        using (sb.Block())
+        {
+            sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(next);");
+            sb.AppendLine("return global::FuncyTown.ResultTryExtensions.ThenTryAsync(_inner, _ => next(), code, message);");
+        }
     }
 
     private static void EmitChainMethods(
