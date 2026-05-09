@@ -1,10 +1,23 @@
 #nullable enable
+FuncyTown.Error
+FuncyTown.Error.Code.get -> string!
+FuncyTown.Error.Code.init -> void
+FuncyTown.Error.Deconstruct(out string! Code, out string! Message, out System.Exception? Exception) -> void
+FuncyTown.Error.Equals(FuncyTown.Error? other) -> bool
+FuncyTown.Error.Error(string! Code, string! Message, System.Exception? Exception = null) -> void
+FuncyTown.Error.Exception.get -> System.Exception?
+FuncyTown.Error.Exception.init -> void
+FuncyTown.Error.Message.get -> string!
+FuncyTown.Error.Message.init -> void
+FuncyTown.Error.<Clone>$() -> FuncyTown.Error!
 FuncyTown.ErrorCaseAttribute
 FuncyTown.ErrorCaseAttribute.ErrorCaseAttribute() -> void
 FuncyTown.ErrorUnionAttribute
 FuncyTown.ErrorUnionAttribute.ErrorUnionAttribute() -> void
 FuncyTown.ICombinableError<TSelf>
 FuncyTown.ICombinableError<TSelf>.Combine(System.Collections.Generic.IReadOnlyList<TSelf>! errors) -> TSelf
+FuncyTown.IExceptionalError<TSelf>
+FuncyTown.IExceptionalError<TSelf>.FromException(System.Exception! exception, string? code = null, string? message = null) -> TSelf
 FuncyTown.IError
 FuncyTown.IError.Code.get -> string!
 FuncyTown.IError.Message.get -> string!
@@ -24,6 +37,7 @@ FuncyTown.Result<T, TError>.IfSuccessful(System.Action<T>! action) -> FuncyTown.
 FuncyTown.Result<T, TError>.IfSuccessfulAsync(System.Func<T, System.Threading.Tasks.Task!>! action) -> System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>!
 FuncyTown.Result<T, TError>.IsFailure.get -> bool
 FuncyTown.Result<T, TError>.IsSuccess.get -> bool
+FuncyTown.Result<T, TError>.IsUninitialized.get -> bool
 FuncyTown.Result<T, TError>.Map<TNew>(System.Func<T, TNew>! selector) -> FuncyTown.Result<TNew, TError>
 FuncyTown.Result<T, TError>.MapAsync<TNew>(System.Func<T, System.Threading.Tasks.Task<TNew>!>! selector) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
 FuncyTown.Result<T, TError>.MapError<TNewError>(System.Func<TError, TNewError>! selector) -> FuncyTown.Result<T, TNewError>
@@ -86,6 +100,7 @@ FuncyTown.ResultKind
 FuncyTown.ResultKind.Class = 1 -> FuncyTown.ResultKind
 FuncyTown.ResultKind.Struct = 0 -> FuncyTown.ResultKind
 FuncyTown.ResultTaskExtensions
+FuncyTown.ResultTryExtensions
 FuncyTown.ResultTaskExtensions.extension<T, TError>(System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>!)
 FuncyTown.ResultTaskExtensions.extension<T, TError>(System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>!).AndThen<TNew>(System.Func<T, FuncyTown.Result<TNew, TError>>! next) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
 FuncyTown.ResultTaskExtensions.extension<T, TError>(System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>!).AndThen<TNew>(System.Func<T, System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!>! next) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
@@ -141,6 +156,12 @@ override FuncyTown.ResultJsonConverterFactory.CreateConverter(System.Type! typeT
 override FuncyTown.Unit.Equals(object? obj) -> bool
 override FuncyTown.Unit.GetHashCode() -> int
 override FuncyTown.Unit.ToString() -> string!
+override FuncyTown.Error.Equals(object? obj) -> bool
+override FuncyTown.Error.GetHashCode() -> int
+override FuncyTown.Error.ToString() -> string!
+static FuncyTown.Error.FromException(System.Exception! exception, string? code = null, string? message = null) -> FuncyTown.Error!
+static FuncyTown.Error.operator !=(FuncyTown.Error? left, FuncyTown.Error? right) -> bool
+static FuncyTown.Error.operator ==(FuncyTown.Error? left, FuncyTown.Error? right) -> bool
 static FuncyTown.Result.All<T1, T2, E>(FuncyTown.Result<T1, E> r1, FuncyTown.Result<T2, E> r2) -> FuncyTown.Result<(T1, T2), E>
 static FuncyTown.Result.All<T1, T2, T3, E>(FuncyTown.Result<T1, E> r1, FuncyTown.Result<T2, E> r2, FuncyTown.Result<T3, E> r3) -> FuncyTown.Result<(T1, T2, T3), E>
 static FuncyTown.Result.All<T1, T2, T3, T4, E>(FuncyTown.Result<T1, E> r1, FuncyTown.Result<T2, E> r2, FuncyTown.Result<T3, E> r3, FuncyTown.Result<T4, E> r4) -> FuncyTown.Result<(T1, T2, T3, T4), E>
@@ -158,6 +179,10 @@ static FuncyTown.Result<T, TError>.Failure(TError error) -> FuncyTown.Result<T, 
 static FuncyTown.Result<T, TError>.Success(T value) -> FuncyTown.Result<T, TError>
 static FuncyTown.Result<T, TError>.operator !=(FuncyTown.Result<T, TError> left, FuncyTown.Result<T, TError> right) -> bool
 static FuncyTown.Result<T, TError>.operator ==(FuncyTown.Result<T, TError> left, FuncyTown.Result<T, TError> right) -> bool
+static FuncyTown.ResultTryExtensions.MapTry<T, TError, TNew>(this FuncyTown.Result<T, TError> source, System.Func<T, TNew>! selector, string? code = null, string? message = null) -> FuncyTown.Result<TNew, TError>
+static FuncyTown.ResultTryExtensions.MapTryAsync<T, TError, TNew>(this FuncyTown.Result<T, TError> source, System.Func<T, System.Threading.Tasks.Task<TNew>!>! selector, string? code = null, string? message = null) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
+static FuncyTown.ResultTryExtensions.ThenTry<T, TError, TNew>(this FuncyTown.Result<T, TError> source, System.Func<T, FuncyTown.Result<TNew, TError>>! next, string? code = null, string? message = null) -> FuncyTown.Result<TNew, TError>
+static FuncyTown.ResultTryExtensions.ThenTryAsync<T, TError, TNew>(this FuncyTown.Result<T, TError> source, System.Func<T, System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!>! next, string? code = null, string? message = null) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
 static FuncyTown.ResultTaskExtensions.AndThen<T, TError, TNew>(this System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>! source, System.Func<T, FuncyTown.Result<TNew, TError>>! next) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
 static FuncyTown.ResultTaskExtensions.AndThen<T, TError, TNew>(this System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>! source, System.Func<T, System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!>! next) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!
 static FuncyTown.ResultTaskExtensions.Bind<T, TError, TNew>(this System.Threading.Tasks.Task<FuncyTown.Result<T, TError>>! source, System.Func<T, FuncyTown.Result<TNew, TError>>! next) -> System.Threading.Tasks.Task<FuncyTown.Result<TNew, TError>>!

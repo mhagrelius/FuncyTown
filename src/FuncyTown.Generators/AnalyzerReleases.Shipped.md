@@ -6,3 +6,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|--------------------
 FT0007 | FuncyTown.Generation | Error | MustBePartial
 FT0008 | FuncyTown.Generation | Error | FileLocalContainingTypeUnsupported
+FT0009 | FuncyTown.Generation | Warning | PrimaryConstructorParametersUnsupported
