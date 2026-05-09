@@ -1,0 +1,41 @@
+{
+  "name": "funcytown-railway-style",
+  "version": "0.1.0",
+  "description": "Opinionated best practices for writing resilient FuncyTown railway-style Result pipelines.",
+  "author": {
+    "name": "Matthew Hagrelius",
+    "email": "matthew@hagreli.us",
+    "url": "https://github.com/mhagrelius"
+  },
+  "homepage": "https://github.com/mhagrelius/FuncyTown#agent-skill",
+  "repository": "https://github.com/mhagrelius/FuncyTown",
+  "license": "MIT",
+  "keywords": [
+    "funcytown",
+    "csharp",
+    "dotnet",
+    "result",
+    "railway-oriented-programming",
+    "functional-programming",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "FuncyTown Railway Style",
+    "shortDescription": "Write fluent typed Result pipelines with FuncyTown.",
+    "longDescription": "A skill-only plugin for agents writing consumer C# code with FuncyTown. It teaches generated Result aliases, typed error unions, railway-oriented fluent chains, async orchestration, validation, recovery, observability taps, combinators, and endpoint termination.",
+    "developerName": "Matthew Hagrelius",
+    "category": "Development",
+    "capabilities": [
+      "Code",
+      "Reference"
+    ],
+    "websiteURL": "https://github.com/mhagrelius/FuncyTown",
+    "defaultPrompt": [
+      "Use FuncyTown railway style in this C# workflow.",
+      "Refactor this code into a typed Result pipeline.",
+      "Review this FuncyTown pipeline for best practices."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "funcytown",
+  "interface": {
+    "displayName": "FuncyTown"
+  },
+  "plugins": [
+    {
+      "name": "funcytown-railway-style",
+      "source": {
+        "source": "local",
+        "path": "./plugins/funcytown-railway-style"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    }
+  ]
+}

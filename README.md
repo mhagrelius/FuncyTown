@@ -51,6 +51,18 @@ Consumer `.csproj` requirements:
 
 `LangVersion` must be `latest` (or a specific 14-or-higher version) — generic attributes such as `[Result<T, TError>]` are unavailable on lower language levels. The runtime targets `net10.0` only.
 
+## Agent Skill
+
+FuncyTown includes an optional agent skill for writing consumer code in the intended railway style: [`funcytown-railway-style`](plugins/funcytown-railway-style/skills/funcytown-railway-style/SKILL.md).
+
+The skill is packaged once and can be installed in a few ways:
+
+- **Codex marketplace/plugin**: install the `funcytown-railway-style` plugin from this repo's [`marketplace.json`](.agents/plugins/marketplace.json). The plugin is skill-only and points at `plugins/funcytown-railway-style/skills/`.
+- **Codex direct skill install**: install just `plugins/funcytown-railway-style/skills/funcytown-railway-style` from `mhagrelius/FuncyTown`.
+- **Claude-compatible skill install**: use the same `plugins/funcytown-railway-style/skills/funcytown-railway-style` directory as the standalone skill folder, for example by copying it to `~/.claude/skills/funcytown-railway-style`.
+
+The skill teaches generated Result aliases, typed error unions, fluent railway pipelines, async orchestration, validation, recovery, observability taps, combinators, and endpoint termination.
+
 ## Quick Start
 
 ```csharp
