@@ -10,7 +10,7 @@ namespace MyApp
     {
         private readonly global::FuncyTown.Result<string, global::MyApp.FakeError> _inner;
         
-        private StringResult(global::FuncyTown.Result<string, global::MyApp.FakeError> inner) => _inner = inner;
+        private StringResult(global::FuncyTown.Result<string, global::MyApp.FakeError> inner) : this() => _inner = inner;
         
         public static StringResult Success(string value) => new(global::FuncyTown.Result<string, global::MyApp.FakeError>.Success(value));
         public static StringResult Failure(global::MyApp.FakeError error) => new(global::FuncyTown.Result<string, global::MyApp.FakeError>.Failure(error));

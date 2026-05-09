@@ -10,7 +10,7 @@ namespace MyApp
     {
         private readonly global::FuncyTown.Result<global::MyApp.User, global::MyApp.UserError> _inner;
         
-        private UserResult(global::FuncyTown.Result<global::MyApp.User, global::MyApp.UserError> inner) => _inner = inner;
+        private UserResult(global::FuncyTown.Result<global::MyApp.User, global::MyApp.UserError> inner) : this() => _inner = inner;
         
         public static UserResult Success(global::MyApp.User value) => new(global::FuncyTown.Result<global::MyApp.User, global::MyApp.UserError>.Success(value));
         public static UserResult Failure(global::MyApp.UserError error) => new(global::FuncyTown.Result<global::MyApp.User, global::MyApp.UserError>.Failure(error));

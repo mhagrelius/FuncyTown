@@ -15,6 +15,7 @@ internal sealed record ResultAliasModel(
     bool IsClassKind,
     bool ImplicitConversionsEnabled,
     bool JsonConverterEnabled,
+    bool ErrorTypeSupportsExceptions,
     bool IsVoidSuccess)
 {
     /// <summary>The hint name used for the generated source file.</summary>

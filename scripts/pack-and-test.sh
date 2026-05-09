@@ -36,6 +36,7 @@ cat > nuget.config <<EOF
 EOF
 
 cat > Program.cs <<'EOF'
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -67,6 +68,18 @@ public readonly partial record struct IntResult;
 [Result<string, FakeError>]
 public readonly partial record struct StringResult;
 
+public sealed record AppError(string Code, string Message, Exception? Exception = null) : IExceptionalError<AppError>
+{
+    public static AppError FromException(Exception exception, string? code = null, string? message = null) =>
+        new(code ?? exception.GetType().Name, message ?? exception.Message, exception);
+}
+
+[Result<string, AppError>]
+public readonly partial record struct OperationResult;
+
+[Result<int, AppError>]
+public readonly partial record struct ParsedResult;
+
 public static class Program
 {
     public static async Task<int> Main()
@@ -89,6 +102,20 @@ public static class Program
         var taskCrossAlias = await Task.FromResult(IntResult.Success(11))
             .Then(v => StringResult.Success($"task cross = {v + 31}"));
         System.Console.WriteLine(taskCrossAlias.Value);
+
+        var parsed = OperationResult.Success(" 41 ")
+            .MapTry(static text => text.Trim(), code: "TrimFailed")
+            .ThenTry(static text => ParsedResult.Success(int.Parse(text) + 1), code: "ParseFailed");
+        System.Console.WriteLine($"parsed = {parsed.Value}");
+
+        var parsedAsync = await OperationResult.Success(" 40 ")
+            .MapTryAsync(static text => Task.FromResult(text.Trim()), code: "TrimFailed")
+            .ThenTryAsync(static text => Task.FromResult(ParsedResult.Success(int.Parse(text) + 2)), code: "ParseFailed");
+        System.Console.WriteLine($"parsed async = {parsedAsync.Value}");
+
+        var parseFailure = OperationResult.Success("not an int")
+            .ThenTry(static text => ParsedResult.Success(int.Parse(text)), code: "ParseFailed");
+        System.Console.WriteLine($"parse failure = {parseFailure.Error.Code}");
 
         IntResult validationFailure = new Validation("value");
         var validationText = validationFailure.Match(
@@ -170,6 +197,12 @@ public static class Program
             && asyncResult.IsSuccess
             && crossAlias.IsSuccess
             && taskCrossAlias.IsSuccess
+            && parsed.IsSuccess
+            && parsed.Value == 42
+            && parsedAsync.IsSuccess
+            && parsedAsync.Value == 42
+            && parseFailure.IsFailure
+            && parseFailure.Error.Code == "ParseFailed"
             && validationText == "validation value"
             && notFoundText == "missing id 404"
             && combinedText == "many 2"

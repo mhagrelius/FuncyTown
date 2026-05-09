@@ -28,4 +28,14 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "File-local type identity is scoped to a single source file, so generated partial declarations and generated type references cannot extend types nested inside file-local containing types.",
         helpLinkUri: HelpLink("FT0008"));
+
+    public static readonly DiagnosticDescriptor PrimaryConstructorParametersUnsupported = new(
+        id: "FT0009",
+        title: "FuncyTown Result alias cannot declare primary constructor parameters",
+        messageFormat: "Type '{0}' is decorated with [Result<...>] but declares primary constructor parameters; move that state into the Result success type",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "FuncyTown Result aliases wrap generated Result state. Additional primary constructor parameters create separate record state that cannot be initialized by the generated Success and Failure factories.",
+        helpLinkUri: HelpLink("FT0009"));
 }

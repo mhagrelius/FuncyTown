@@ -51,6 +51,18 @@ Consumer `.csproj` requirements:
 
 `LangVersion` must be `latest` (or a specific 14-or-higher version) — generic attributes such as `[Result<T, TError>]` are unavailable on lower language levels. The runtime targets `net10.0` only.
 
+## Agent Skill
+
+FuncyTown includes an optional agent skill for writing consumer code in the intended railway style: [`funcytown-railway-style`](plugins/funcytown-railway-style/skills/funcytown-railway-style/SKILL.md).
+
+The skill is packaged once and can be installed in a few ways:
+
+- **Codex marketplace/plugin**: install the `funcytown-railway-style` plugin from this repo's [`marketplace.json`](.agents/plugins/marketplace.json). The plugin is skill-only and points at `plugins/funcytown-railway-style/skills/`.
+- **Codex direct skill install**: install just `plugins/funcytown-railway-style/skills/funcytown-railway-style` from `mhagrelius/FuncyTown`.
+- **Claude-compatible skill install**: use the same `plugins/funcytown-railway-style/skills/funcytown-railway-style` directory as the standalone skill folder, for example by copying it to `~/.claude/skills/funcytown-railway-style`.
+
+The skill teaches generated Result aliases, typed error unions, fluent railway pipelines, async orchestration, validation, recovery, observability taps, combinators, and endpoint termination.
+
 ## Quick Start
 
 ```csharp
@@ -96,6 +108,64 @@ var name = LoadUser(id)
 ```
 
 Generated aliases expose `Success`, `Failure`, `IsSuccess`, `IsFailure`, `Value`, `Error`, `Deconstruct`, `Match`, `ToString`, the chain method set, and implicit conversions from success/error values unless disabled with `[Result<User, UserError>(Implicit = false)]`.
+
+For simple failures, prototypes, or adapter boundaries, FuncyTown also ships a basic `Error` implementation:
+
+```csharp
+[Result<int, Error>]
+public readonly partial record struct OperationResult;
+
+public static OperationResult Divide(int left, int right)
+{
+    if (right == 0)
+    {
+        return new Error("DivideByZero", "Cannot divide by zero.");
+    }
+
+    return left / right;
+}
+
+public static OperationResult TryRead()
+{
+    try
+    {
+        return ReadValue();
+    }
+    catch (IOException ex)
+    {
+        return Error.FromException(ex, code: "ReadFailed");
+    }
+}
+```
+
+`Error.Exception` is kept as local diagnostic context and is ignored by `System.Text.Json` serialization. Prefer domain-specific error unions for public domain APIs that need closed cases and exhaustive matching.
+
+Error types can opt in to exception-catching chain helpers by implementing `IExceptionalError<TSelf>`:
+
+```csharp
+public sealed record AppError(string Code, string Message, Exception? Exception = null)
+    : IExceptionalError<AppError>
+{
+    public static AppError FromException(Exception exception, string? code = null, string? message = null) =>
+        new(code ?? exception.GetType().Name, message ?? exception.Message, exception);
+}
+```
+
+`MapTry` and `ThenTry` are convenience boundary helpers for calling exception-throwing APIs from a Result pipeline. They catch exceptions thrown by the supplied delegate, including `OperationCanceledException`, and convert them through `TError.FromException(...)`.
+
+```csharp
+[Result<string, AppError>]
+public readonly partial record struct OperationResult;
+
+[Result<Document, AppError>]
+public readonly partial record struct DocumentResult;
+
+var result = OperationResult.Success(path)
+    .MapTry(File.ReadAllText, code: "FileReadFailed")
+    .ThenTry(ParseDocument, code: "ParseFailed");
+```
+
+Use normal `Map`/`Then` for domain logic that already returns Results. `Try`-style helpers are best kept at infrastructure or adapter boundaries.
 
 ## Why `public readonly partial record struct`
 

@@ -124,11 +124,11 @@ internal static class AliasTaskExtensionEmitter
             {
                 if (model.IsVoidSuccess)
                 {
-                    EmitVoidExtensions(sb, aliasType, model.ErrorTypeFullyQualifiedName);
+                    EmitVoidExtensions(sb, aliasType, model.ErrorTypeFullyQualifiedName, model.ErrorTypeSupportsExceptions);
                 }
                 else
                 {
-                    EmitValueExtensions(sb, aliasType, model.ValueTypeFullyQualifiedName, model.ErrorTypeFullyQualifiedName);
+                    EmitValueExtensions(sb, aliasType, model.ValueTypeFullyQualifiedName, model.ErrorTypeFullyQualifiedName, model.ErrorTypeSupportsExceptions);
                 }
 
                 EmitCrossAliasExtensions(sb, model, family);
@@ -211,7 +211,8 @@ internal static class AliasTaskExtensionEmitter
         IndentedStringBuilder sb,
         string aliasType,
         string valueType,
-        string errorType)
+        string errorType,
+        bool errorTypeSupportsExceptions)
     {
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Map<TNew>", $"global::System.Func<{valueType}, TNew> selector", "Map", "selector");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Map<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TNew>> selector", "MapAsync", "selector", awaitCall: true);
@@ -219,6 +220,16 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Transform<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TNew>> selector", "Map");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Select<TNew>", $"global::System.Func<{valueType}, TNew> selector", "Map");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Select<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TNew>> selector", "Map");
+
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "MapTry", $"global::System.Func<{valueType}, {valueType}> selector, string? code = null, string? message = null", "MapTry", "selector, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "MapTry<TNew>", $"global::System.Func<{valueType}, TNew> selector, string? code = null, string? message = null", "MapTry", "selector, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "MapTry", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{valueType}>> selector, string? code = null, string? message = null", "MapTryAsync", "selector, code, message", awaitCall: true);
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "MapTry<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TNew>> selector, string? code = null, string? message = null", "MapTryAsync", "selector, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "MapTryAsync", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{valueType}>> selector, string? code = null, string? message = null", "MapTry");
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "MapTryAsync<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TNew>> selector, string? code = null, string? message = null", "MapTry");
+        }
 
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "Bind", $"global::System.Func<{valueType}, {aliasType}> next", "Bind", "next");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "Bind", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{aliasType}>> next", "BindAsync", "next", awaitCall: true);
@@ -229,6 +240,13 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "SelectMany", $"global::System.Func<{valueType}, {aliasType}> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "SelectMany", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{aliasType}>> next", "Bind");
 
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "ThenTry", $"global::System.Func<{valueType}, {aliasType}> next, string? code = null, string? message = null", "ThenTry", "next, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "ThenTry", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{aliasType}>> next, string? code = null, string? message = null", "ThenTryAsync", "next, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "ThenTryAsync", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{aliasType}>> next, string? code = null, string? message = null", "ThenTry");
+        }
+
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Bind<TNew>", $"global::System.Func<{valueType}, global::FuncyTown.Result<TNew, {errorType}>> next", "Bind", "next");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Bind<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next", "BindAsync", "next", awaitCall: true);
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Then<TNew>", $"global::System.Func<{valueType}, global::FuncyTown.Result<TNew, {errorType}>> next", "Bind");
@@ -237,6 +255,13 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "AndThen<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "SelectMany<TNew>", $"global::System.Func<{valueType}, global::FuncyTown.Result<TNew, {errorType}>> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "SelectMany<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next", "Bind");
+
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "ThenTry<TNew>", $"global::System.Func<{valueType}, global::FuncyTown.Result<TNew, {errorType}>> next, string? code = null, string? message = null", "ThenTry", "next, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "ThenTry<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next, string? code = null, string? message = null", "ThenTryAsync", "next, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "ThenTryAsync<TNew>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next, string? code = null, string? message = null", "ThenTry");
+        }
 
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<{valueType}, TNewError>>", "MapError<TNewError>", $"global::System.Func<{errorType}, TNewError> selector", "MapError", "selector");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<{valueType}, TNewError>>", "MapError<TNewError>", $"global::System.Func<{errorType}, global::System.Threading.Tasks.Task<TNewError>> selector", "MapErrorAsync", "selector", awaitCall: true);
@@ -278,7 +303,7 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingPair(sb, "global::System.Threading.Tasks.Task<TResult>", "Match<TResult>", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<TResult>> onSuccess, global::System.Func<{errorType}, global::System.Threading.Tasks.Task<TResult>> onFailure", "MatchAsync", "onSuccess, onFailure", awaitCall: true);
     }
 
-    private static void EmitVoidExtensions(IndentedStringBuilder sb, string aliasType, string errorType)
+    private static void EmitVoidExtensions(IndentedStringBuilder sb, string aliasType, string errorType, bool errorTypeSupportsExceptions)
     {
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Map<TNew>", "global::System.Func<TNew> selector", "Map", "selector");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Map<TNew>", "global::System.Func<global::System.Threading.Tasks.Task<TNew>> selector", "MapAsync", "selector", awaitCall: true);
@@ -286,6 +311,13 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Transform<TNew>", "global::System.Func<global::System.Threading.Tasks.Task<TNew>> selector", "Map");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Select<TNew>", "global::System.Func<TNew> selector", "Map");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Select<TNew>", "global::System.Func<global::System.Threading.Tasks.Task<TNew>> selector", "Map");
+
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "MapTry<TNew>", "global::System.Func<TNew> selector, string? code = null, string? message = null", "MapTry", "selector, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "MapTry<TNew>", "global::System.Func<global::System.Threading.Tasks.Task<TNew>> selector, string? code = null, string? message = null", "MapTryAsync", "selector, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "MapTryAsync<TNew>", "global::System.Func<global::System.Threading.Tasks.Task<TNew>> selector, string? code = null, string? message = null", "MapTry");
+        }
 
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "Bind", $"global::System.Func<{aliasType}> next", "Bind", "next");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "Bind", $"global::System.Func<global::System.Threading.Tasks.Task<{aliasType}>> next", "BindAsync", "next", awaitCall: true);
@@ -296,6 +328,13 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "SelectMany", $"global::System.Func<{aliasType}> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "SelectMany", $"global::System.Func<global::System.Threading.Tasks.Task<{aliasType}>> next", "Bind");
 
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "ThenTry", $"global::System.Func<{aliasType}> next, string? code = null, string? message = null", "ThenTry", "next, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "ThenTry", $"global::System.Func<global::System.Threading.Tasks.Task<{aliasType}>> next, string? code = null, string? message = null", "ThenTryAsync", "next, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{aliasType}>", "ThenTryAsync", $"global::System.Func<global::System.Threading.Tasks.Task<{aliasType}>> next, string? code = null, string? message = null", "ThenTry");
+        }
+
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Bind<TNew>", $"global::System.Func<global::FuncyTown.Result<TNew, {errorType}>> next", "Bind", "next");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Bind<TNew>", $"global::System.Func<global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next", "BindAsync", "next", awaitCall: true);
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "Then<TNew>", $"global::System.Func<global::FuncyTown.Result<TNew, {errorType}>> next", "Bind");
@@ -304,6 +343,13 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "AndThen<TNew>", $"global::System.Func<global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "SelectMany<TNew>", $"global::System.Func<global::FuncyTown.Result<TNew, {errorType}>> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "SelectMany<TNew>", $"global::System.Func<global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next", "Bind");
+
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "ThenTry<TNew>", $"global::System.Func<global::FuncyTown.Result<TNew, {errorType}>> next, string? code = null, string? message = null", "ThenTry", "next, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "ThenTry<TNew>", $"global::System.Func<global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next, string? code = null, string? message = null", "ThenTryAsync", "next, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>", "ThenTryAsync<TNew>", $"global::System.Func<global::System.Threading.Tasks.Task<global::FuncyTown.Result<TNew, {errorType}>>> next, string? code = null, string? message = null", "ThenTry");
+        }
 
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<global::FuncyTown.Unit, TNewError>>", "MapError<TNewError>", $"global::System.Func<{errorType}, TNewError> selector", "MapError", "selector");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<global::FuncyTown.Result<global::FuncyTown.Unit, TNewError>>", "MapError<TNewError>", $"global::System.Func<{errorType}, global::System.Threading.Tasks.Task<TNewError>> selector", "MapErrorAsync", "selector", awaitCall: true);
@@ -350,11 +396,11 @@ internal static class AliasTaskExtensionEmitter
 
             if (model.IsVoidSuccess)
             {
-                EmitVoidCrossAliasExtensions(sb, sibling.AliasFullyQualifiedName);
+                EmitVoidCrossAliasExtensions(sb, sibling.AliasFullyQualifiedName, model.ErrorTypeSupportsExceptions);
             }
             else
             {
-                EmitValueCrossAliasExtensions(sb, model.ValueTypeFullyQualifiedName, sibling.AliasFullyQualifiedName);
+                EmitValueCrossAliasExtensions(sb, model.ValueTypeFullyQualifiedName, sibling.AliasFullyQualifiedName, model.ErrorTypeSupportsExceptions);
             }
         }
     }
@@ -362,7 +408,8 @@ internal static class AliasTaskExtensionEmitter
     private static void EmitValueCrossAliasExtensions(
         IndentedStringBuilder sb,
         string valueType,
-        string siblingType)
+        string siblingType,
+        bool errorTypeSupportsExceptions)
     {
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "Bind", $"global::System.Func<{valueType}, {siblingType}> next", "Bind", "next");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "Bind", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next", "BindAsync", "next", awaitCall: true);
@@ -372,9 +419,16 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "AndThen", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "SelectMany", $"global::System.Func<{valueType}, {siblingType}> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "SelectMany", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next", "Bind");
+
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "ThenTry", $"global::System.Func<{valueType}, {siblingType}> next, string? code = null, string? message = null", "ThenTry", "next, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "ThenTry", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next, string? code = null, string? message = null", "ThenTryAsync", "next, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "ThenTryAsync", $"global::System.Func<{valueType}, global::System.Threading.Tasks.Task<{siblingType}>> next, string? code = null, string? message = null", "ThenTry");
+        }
     }
 
-    private static void EmitVoidCrossAliasExtensions(IndentedStringBuilder sb, string siblingType)
+    private static void EmitVoidCrossAliasExtensions(IndentedStringBuilder sb, string siblingType, bool errorTypeSupportsExceptions)
     {
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "Bind", $"global::System.Func<{siblingType}> next", "Bind", "next");
         EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "Bind", $"global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next", "BindAsync", "next", awaitCall: true);
@@ -384,6 +438,13 @@ internal static class AliasTaskExtensionEmitter
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "AndThen", $"global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "SelectMany", $"global::System.Func<{siblingType}> next", "Bind");
         EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "SelectMany", $"global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next", "Bind");
+
+        if (errorTypeSupportsExceptions)
+        {
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "ThenTry", $"global::System.Func<{siblingType}> next, string? code = null, string? message = null", "ThenTry", "next, code, message");
+            EmitForwardingPair(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "ThenTry", $"global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next, string? code = null, string? message = null", "ThenTryAsync", "next, code, message", awaitCall: true);
+            EmitForwardingAlias(sb, $"global::System.Threading.Tasks.Task<{siblingType}>", "ThenTryAsync", $"global::System.Func<global::System.Threading.Tasks.Task<{siblingType}>> next, string? code = null, string? message = null", "ThenTry");
+        }
     }
 
     private static void EmitForwardingPair(
@@ -423,7 +484,7 @@ internal static class AliasTaskExtensionEmitter
         sb.AppendLine("global::System.ArgumentNullException.ThrowIfNull(source);");
         foreach (var parameterName in ExtractArgumentNames(parameters).Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries))
         {
-            if (parameterName != "error")
+            if (parameterName != "error" && parameterName != "code" && parameterName != "message")
             {
                 sb.AppendLine($"global::System.ArgumentNullException.ThrowIfNull({parameterName});");
             }
@@ -436,6 +497,12 @@ internal static class AliasTaskExtensionEmitter
             .Select(static parameter =>
             {
                 var trimmed = parameter.Trim();
+                var equals = trimmed.IndexOf("=", StringComparison.Ordinal);
+                if (equals >= 0)
+                {
+                    trimmed = trimmed.Substring(0, equals).TrimEnd();
+                }
+
                 var space = trimmed.LastIndexOf(' ');
                 return space < 0 ? trimmed : trimmed.Substring(space + 1);
             }));

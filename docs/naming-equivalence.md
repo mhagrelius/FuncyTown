@@ -9,7 +9,9 @@ Tap-style names never transform values. `OnSuccess`, `OnFailure`, `Tap`, `TapErr
 | Semantic group | Canonical name | Aliases | What it does |
 |---|---|---|---|
 | Transform | `Map` | `Transform`, `Select` | Changes the success value; failure passes through. |
+| Transform | `MapTry` | none | Changes the success value with an exception-throwing function; caught exceptions become failures via `IExceptionalError<TSelf>`. |
 | Chain | `Bind` | `Then`, `AndThen`, `SelectMany` | Calls a function that returns another Result; failure passes through. |
+| Chain | `ThenTry` | none | Calls an exception-throwing function that returns another Result; caught exceptions become failures via `IExceptionalError<TSelf>`. |
 | Recovery | `MapError` | `TransformError` | Changes the error value; success passes through. |
 | Recovery | `Recover` | `OrElse` | Replaces a failure with a success value. |
 | Recovery | `RecoverWith` | `OrElseThen` | Replaces a failure with another Result. |
@@ -23,7 +25,9 @@ Tap-style names never transform values. `OnSuccess`, `OnFailure`, `Tap`, `TapErr
 | Semantic group | Canonical name | Aliases | What it does |
 |---|---|---|---|
 | Transform | `MapAsync` | `TransformAsync`, `SelectAsync` | Awaits a success-value transform. |
+| Transform | `MapTryAsync` | none | Awaits a success-value transform; caught exceptions become failures via `IExceptionalError<TSelf>`. |
 | Chain | `BindAsync` | `ThenAsync`, `AndThenAsync`, `SelectManyAsync` | Awaits a Result-returning operation. |
+| Chain | `ThenTryAsync` | none | Awaits a Result-returning operation; caught exceptions become failures via `IExceptionalError<TSelf>`. |
 | Recovery | `MapErrorAsync` | `TransformErrorAsync` | Awaits an error transform. |
 | Recovery | `RecoverAsync` | `OrElseAsync` | Awaits a fallback success value. |
 | Recovery | `RecoverWithAsync` | `OrElseThenAsync` | Awaits a fallback Result. |

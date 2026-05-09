@@ -6,6 +6,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.5] - 2026-05-09
+
+### Added
+
+- `Error`, a basic `IError` implementation with `Code`, `Message`, optional
+  non-serialized `Exception`, and `Error.FromException(...)` for simple failures,
+  prototypes, and adapter boundaries.
+- `IExceptionalError<TSelf>` plus `MapTry`/`ThenTry` and async variants for
+  raw Results and generated aliases, for catching exceptions at adapter boundaries
+  and converting them to Result failures.
+
 ## [0.1.0]
 
 Initial public pre-release on nuget.org.
@@ -60,5 +71,6 @@ Initial public pre-release on nuget.org.
   `.ps1`), migration guides (from ErrorOr, from LanguageExt), naming-equivalence
   reference, per-rule documentation, contributor and security policies.
 
-[Unreleased]: https://github.com/mhagrelius/FuncyTown/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mhagrelius/FuncyTown/compare/v0.1.0-alpha.5...HEAD
+[0.1.0-alpha.5]: https://github.com/mhagrelius/FuncyTown/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0]: https://github.com/mhagrelius/FuncyTown/releases/tag/v0.1.0

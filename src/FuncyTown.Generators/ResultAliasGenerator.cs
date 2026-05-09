@@ -108,6 +108,15 @@ public sealed class ResultAliasGenerator : IIncrementalGenerator
             return new ProjectionResult(null, diagnostic);
         }
 
+        if (decl.ParameterList?.Parameters.Count > 0)
+        {
+            var diagnostic = Diagnostic.Create(
+                DiagnosticDescriptors.PrimaryConstructorParametersUnsupported,
+                decl.Identifier.GetLocation(),
+                typeSymbol.ToDisplayString());
+            return new ProjectionResult(null, diagnostic);
+        }
+
         var attr = ctx.Attributes.FirstOrDefault();
         if (attr is null)
         {
@@ -166,7 +175,21 @@ public sealed class ResultAliasGenerator : IIncrementalGenerator
             IsClassKind: isClassKind,
             ImplicitConversionsEnabled: implicitEnabled,
             JsonConverterEnabled: jsonConverterEnabled,
+            ErrorTypeSupportsExceptions: ImplementsExceptionalError(errorType),
             IsVoidSuccess: isVoidSuccess);
         return new ProjectionResult(model, null);
+    }
+
+    private static bool ImplementsExceptionalError(ITypeSymbol errorType)
+    {
+        foreach (var @interface in errorType.AllInterfaces)
+        {
+            if (@interface.OriginalDefinition.ToDisplayString() == "FuncyTown.IExceptionalError<TSelf>")
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
